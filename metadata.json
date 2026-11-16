@@ -1,5 +1,5 @@
 {
-  "game_name": "Platanus Hack: Santiago Brick Breaker",
-  "description": "Batalla campal por romper la mayor cantidad de ladrillos",
+  "game_name": "Super Platanus Showdown",
+  "description": "Pelea de plataformas de la hackathon: elige entre 7 cracks (Mr. Platanus, Platanus Unmasked, Neater, Buker y más), súbele el % a tu rival y sácalo de la pantalla en la azotea de Buk, las Torres del Paine, el puerto de Valparaíso, el Metro de Santiago o el Golden Gate. 1 jugador contra la CPU o 2 jugadores.",
   "player_mode": "two_player"
 }
