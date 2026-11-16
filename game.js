@@ -746,6 +746,7 @@ function draw() {
     menu(['1 JUGADOR  vs  CPU', '2 JUGADORES', 'AJUSTES', 'CONTROLES'], tsel, 121);
     [['PALANCA', 'MOVERSE · SALTAR · AGACHARSE'], [lab(0, 'atk'), 'GOLPE'], [lab(0, 'spc'), 'ESPECIAL'], [lab(0, 'sh'), 'ESCUDO'], ['ÍTEMS', 'GOLPE TOMA · ESCUDO SUELTA'], ['START', 'PAUSA']].forEach((r, i) => { T(r[0], 104, 193 + i * 11, $e, 8, 'right'); T(r[1], 110, 193 + i * 11, $j, 8); });
     if (clk % 60 < 36) T('PRESIONA START', 200, 266, $p, 12, 'center');
+    T('by bvasquezm', 24, 284, $j, 7);
     footlights(); return;
   }
   if (mode === 'ctl') {
