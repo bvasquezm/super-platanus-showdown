@@ -74,6 +74,8 @@ const CHARS = [
   { n: 'PIPE SATÉLITE', k: 1, sh: $8, lg: 'b', hr: $A, sk: $5, sp: 2.2, jp: 5.4, wt: 1, s: 'orb', tip: 'RUBY EN ÓRBITA' },
   // Tokus: su especial es colgarse de un pajarito y volar unos segundos; después tiene 5 s de espera
   { n: 'TOKUS', k: 1, sh: '#7a00b0', lg: '', ic: LOGO_T, hr: '#2a1a12', sk: $7, sp: 2.3, jp: 5.4, wt: 0.95, s: 'fly', tip: 'VUELA CON SU PAJARITO' },
+  // Admin: silueta negra con borde y ojos blancos (nn). SUDO lanza una sombra a ras de piso con un efecto al azar
+  { n: 'ADMIN', k: 1, nn: 1, sh: $b, lg: '', hr: $b, sk: $b, sp: 2.2, jp: 5.3, wt: 1, s: 'sudo', tip: 'SUDO' },
 ];
 // --- Golpes: su/ac/re = cuadros de preparación/activo/recuperación; x,y,w,h = caja; d daño; kb+ks empuje; a ángulo ---
 const ATK = {
@@ -89,19 +91,20 @@ const ATK = {
   gun: { su: 18, ac: 1, re: 14, pj: 1, cd: 60 }, // cd: cuadros de espera antes de poder usar de nuevo este especial (1 s)
   gpu: { su: 14, ac: 1, re: 16, pj: 2 },
   bulb: { su: 9, ac: 1, re: 14, pj: 3 },
+  sudo: { su: 14, ac: 1, re: 16, pj: 5, cd: 180 },
   // Con un ítem en la mano: teclado (golpe largo y fuerte, como un bate) y pistola banana (disparo)
   kbd: { su: 7, ac: 5, re: 14, x: 19, y: -17, w: 28, h: 16, d: 13, kb: 4.6, ks: 0.165, a: 40 },
   shot: { su: 5, ac: 1, re: 9, pj: 4 },
   fly: {}, // el vuelo de Tokus no es un golpe: se maneja como estado aparte
 };
 // Proyectiles: 1 plátano (duerme), 2 GPU, 3 ampolleta (queda donde se deja y explota al rato), 4 bala de la pistola banana. v = velocidad
-const PJ = [0, { v: 4, d: 8, kb: 1, ks: 0.035, a: 25 }, { v: 3.2, d: 12, kb: 2.4, ks: 0.09, a: 40 }, { v: 0, d: 13, kb: 4.2, ks: 0.11, a: 50 }, { v: 6, d: 5, kb: 1.4, ks: 0.045, a: 28 }];
+const PJ = [0, { v: 4, d: 8, kb: 1, ks: 0.035, a: 25 }, { v: 3.2, d: 12, kb: 2.4, ks: 0.09, a: 40 }, { v: 0, d: 13, kb: 4.2, ks: 0.11, a: 50 }, { v: 6, d: 5, kb: 1.4, ks: 0.045, a: 28 }, { v: 3.2 }];
 // --- Escenarios: m = plataforma principal, p = plataformas colgantes (vx = se mueve entre x0 y x1) ---
 const STAGES = [
-  { n: 'AZOTEA DE BUK', hz: 'PALOMAS', m: { x: 70, y: 226, w: 260, h: 74 }, p: [{ x: 92, y: 178, w: 56 }, { x: 252, y: 178, w: 56 }, { x: 172, y: 134, w: 56 }] },
+  { n: 'EDIFICIO BUK', hz: 'PALOMAS', m: { x: 70, y: 226, w: 260, h: 74 }, p: [{ x: 92, y: 178, w: 56 }, { x: 252, y: 178, w: 56 }, { x: 172, y: 134, w: 56 }] },
   { n: 'TORRES DEL PAINE', hz: 'VIENTO', m: { x: 86, y: 232, w: 228, h: 68 }, p: [{ x: 58, y: 178, w: 50 }, { x: 292, y: 178, w: 50 }, { x: 160, y: 148, w: 70, vx: 0.5, x0: 110, x1: 220 }] },
   // Puerto: las plataformas son containers (ct) que la grúa baja al muelle (y 210), cuelga (160) o se lleva (-40)
-  { n: 'PUERTO DE VALPARAÍSO', hz: 'GRÚA', m: { x: 60, y: 232, w: 280, h: 68 }, p: [{ x: 84, y: 210, w: 48, ct: 1, col: 0 }, { x: 176, y: -40, w: 48, ct: 1, col: 1 }, { x: 268, y: 160, w: 48, ct: 1, col: 2 }] },
+  { n: 'PUERTO VALPARAÍSO', hz: 'GRÚA', m: { x: 60, y: 232, w: 280, h: 68 }, p: [{ x: 84, y: 210, w: 48, ct: 1, col: 0 }, { x: 176, y: -40, w: 48, ct: 1, col: 1 }, { x: 268, y: 160, w: 48, ct: 1, col: 2 }] },
   // Metro: se pelea en las vías; cada tanto pasa un tren que atropella a quien siga abajo.
   // El piso sigue más allá de la pantalla: no hay borde para caerse, solo se pierde saliendo por los lados
   { n: 'METRO DE SANTIAGO', hz: 'TREN', m: { x: -60, y: 238, w: 520, h: 62 }, p: [{ x: 66, y: 180, w: 58 }, { x: 276, y: 180, w: 58 }, { x: 160, y: 142, w: 80 }] },
@@ -132,7 +135,8 @@ const PC = [$e, $p];
 
 let c, AC, TX, LB, G, mode = 'title', clk = 0, acc = 0, two = 0, tsel = 0, cs = [0, 3], si = 0, hz = 1, cur = 0, tunS = 0, tunB = 'title', psel = 0, stn = 0, keepHit = 0, csel = [0, 0];
 
-const R = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x | 0, y | 0, Math.ceil(w), Math.ceil(h)); };
+let OV = 0; // color forzado: dibuja la silueta de un luchador en un solo color
+const R = (col, x, y, w, h) => { c.fillStyle = OV || col; c.fillRect(x | 0, y | 0, Math.ceil(w), Math.ceil(h)); };
 const T = (s, x, y, col, sz, al) => { c.fillStyle = col; c.font = 'bold ' + (sz || 8) + 'px monospace'; c.textAlign = al || 'left'; c.textBaseline = 'top'; c.fillText(s, x, y); };
 const TS = (s, x, y, col, sz, al) => { T(s, x + 1, y + 1, '#000000', sz, al); T(s, x, y, col, sz, al); };
 const A = (a, fn) => { c.globalAlpha = a; fn(); c.globalAlpha = 1; };
@@ -324,6 +328,7 @@ function footlights() {
 function dF(f, fl) {
   const ch = CHARS[f.c];
   if (f.st === 'dead' || (f.inv > 0 && (clk >> 2 & 1))) return;
+  if (ch.nn && !fl) { OV = $a; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach((o) => { c.save(); c.translate(o[0], o[1]); dF(f, 2); c.restore(); }); OV = 0; }
   const act = f.st === 'fly' ? 'u' : f.st === 'atk' && f.t > f.a.su && f.t <= f.a.su + f.a.ac ? f.an : f.st === 'atk' && f.a.pj ? f.an : 0;
   const air = !f.onG, sw = f.onG && Math.abs(f.vx) > 0.4 ? Math.sin(f.rn) * 2.5 : 0, K = $b, cr = f.cr || (f.st === 'atk' && f.an === 'd');
   c.save(); c.translate(f.x | 0, f.y | 0);
@@ -333,6 +338,7 @@ function dF(f, fl) {
   const chg = f.st === 'atk' && f.chg > 0 && f.t <= f.a.su ? f.chg / CHG : 0;
   if (chg) c.translate((clk & 1 ? 1 : -1) * chg, 0);
   c.scale(f.dir, 1);
+  if (fl > 1) f = { ...f, pow: 0, cf: 0, en: 0, cla: 0 }; // en la pasada de borde no van los brillos
   if (f.pow > 0) A(0.25 + 0.15 * Math.sin(clk / 3), () => R($s, -11, -37, 22, 38));
   // Estela de velocidad del café o la energética
   if ((f.cf > 0 || f.en > 0) && Math.abs(f.vx) > 1) A(0.55, () => { for (let k = 0; k < 3; k++) R(f.en > 0 ? $z : $k, -12 - k * 5 - (clk + k * 3) % 4, -26 + k * 9, 7, 2); });
@@ -370,21 +376,21 @@ function dF(f, fl) {
     else { R($a, 1, -30, 3, 4); R($a, 5, -30, 3, 4); R(K, 2, -28, 1, 2); R(K, 6, -28, 1, 2); R('#e0303a', 2, -24, 5, 2); R(K, 2, -25, 5, 1); }
     arm(K, K, glove); inHand();
   } else {
-    const pn = '#2b3350';
-    const sho = $i;
+    const pn = ch.nn ? K : '#2b3350', sho = ch.nn ? K : $i;
     if (cr) { R(pn, -5, -5, 4, 5); R(sho, -5, -2, 5, 2); if (act === 'd') { R(pn, 1, -5, 13, 3); R(sho, 13, -7, 4, 5); } else { R(pn, 1, -5, 4, 5); R(sho, 1, -2, 5, 2); } c.translate(0, 5); }
     else if (act === 'da') { R(pn, -5, -9, 3, 6); R(sho, -5, -4, 4, 2); R(pn, 1, -9, 4, 4); R(pn, 3, -6, 4, 4); R(pn, 5, -3, 4, 3); R(sho, 7, -1, 6, 3); }
     else if (air) { R(pn, -5, -9, 3, 7); R(pn, 2, -10, 3, 7); R(sho, -4, -4, 4, 2); R(sho, 1, -5, 4, 2); }
     else { R(pn, -4 + sw, -9, 3, 9); R(pn, 1 - sw, -9, 3, 9); R(sho, -4 + sw, -2, 4, 2); R(sho, 1 - sw, -2, 4, 2); }
     R(ch.jk ? ch.sh : ch.sk, -7 - sw / 2, -17, 2, 6);
-    R(ch.sh, -5, -20, 10, 11); R('rgba(0,0,0,.2)', -5, -20, 2, 11); R('rgba(255,255,255,.18)', 3, -20, 2, 11);
-    R(ch.sk, -4, -28, 8, 8); R(ch.hr, -4, -30, 8, 3); R(ch.hr, -5, -29, 2, 6); R(K, 2, -25, 1, 2); R('#b0705a', 2, -22, 2, 1);
+    R(ch.sh, -5, -20, 10, 11); if (!ch.nn) { R('rgba(0,0,0,.2)', -5, -20, 2, 11); R('rgba(255,255,255,.18)', 3, -20, 2, 11); }
+    R(ch.sk, -4, -28, 8, 8); R(ch.hr, -4, -30, 8, 3); R(ch.hr, -5, -29, 2, 6); if (ch.nn) { R($a, -1, -26, 2, 2); R($a, 2, -26, 2, 2); } else { R(K, 2, -25, 1, 2); R('#b0705a', 2, -22, 2, 1); }
     if (ch.gl) { R(K, 0, -26, 5, 1); R(K, 1, -26, 3, 3); R('#bfe3ff', 2, -25, 1, 1); }
     if (ch.brd) { R(ch.hr, 0, -22, 4, 2); R(ch.hr, -1, -23, 1, 3); }
     if (ch.jk) { R($d, -1, -20, 2, 7); R('#e8e8ee', 1, -20, 1, 4); R($d, -5, -10, 10, 1); }
     arm(ch.sh, ch.jk ? ch.sh : ch.sk, ch.sk); inHand();
   }
   c.restore();
+  if (fl > 1) return;
   const x = f.x | 0, y = f.y | 0;
   if (ch.lg && f.st !== 'stun' && f.st !== 'dodge' && act !== 'spin') T(ch.lg, x, y - 19 + (cr ? 5 : 0), $a, 7, 'center');
   // Logo de Neat al centro de la polera (7x7): barra de arriba con flecha que baja a la izquierda, barra de abajo con flecha que sube a la derecha
@@ -475,17 +481,19 @@ function ai(f, o) {
     else if (ad < 16 && dy < -14 && dy > -44) { I.u = 1; I.atk = 1; f.cdn = 26; }
     else if (dy < -24 && rnd() < 0.06) { I.jmp = 1; f.cdn = 10; }
     else if (f.hold === 2 && ad > 40 && Math.abs(dy) < 16 && rnd() < 0.08) { I.atk = 1; I.l = I.r = 0; f.cdn = 24; }
-    else if (sp.pj && sp.pj < 3 && ad > 50 && Math.abs(dy) < 20 && rnd() < 0.03) { I.spc = 1; f.cdn = 50; }
+    else if (sp.pj && sp.pj !== 3 && ad > 50 && Math.abs(dy) < 20 && rnd() < 0.03) { I.spc = 1; f.cdn = 50; }
   }
   return I;
 }
 function fighter(f, I) {
   const ch = CHARS[f.c], g = G, sp = ch.sp * TN.vel * (f.slow > 0 ? 0.45 : 1) * (f.en > 0 ? 1.4 : f.cf > 0 ? 1.25 : 1);
-  if (f.st === 'dead') { if (--f.t <= 0 && f.stk > 0) Object.assign(f, { st: 'idle', x: si === 4 && G.br.st ? G.br.x + (f.i ? HW + 26 : -26) : 200 + (f.i ? 30 : -30), y: 70, vx: 0, vy: 0, pct: 0, inv: 120, jumps: 1, onG: 0, on: null, zz: 0, slow: 0, shp: 100 }); return; }
+  if (f.st === 'dead') { if (--f.t <= 0 && f.stk > 0) Object.assign(f, { st: 'idle', x: si === 4 && G.br.st ? G.br.x + (f.i ? HW + 26 : -26) : 200 + (f.i ? 30 : -30), y: 70, vx: 0, vy: 0, pct: 0, inv: 120, jumps: 1, onG: 0, on: null, zz: 0, slow: 0, rt: 0, iv: 0, shp: 100 }); return; }
   if (f.cf > 0) f.cf--; if (f.en > 0) f.en--; if (!I.sh) f.nsh = 0;
   if (f.scd > 0) f.scd--; if (f.fcd > 0) f.fcd--; if (f.fl && f.st !== 'fly') { f.fl = 0; f.fcd = FCD; } // el vuelo terminó (se soltó, aterrizó o le pegaron): parte la espera
   if (f.inv > 0) f.inv--; if (f.pow > 0) f.pow--; if (f.cla > 0) f.cla--; if (f.slow > 0) f.slow--; if (f.dcd > 0) f.dcd--;
   if (f.st !== 'sh' && f.shp < 100) f.shp += 0.35;
+  if (f.iv > 0) { f.iv--; [I.l, I.r] = [I.r, I.l]; }
+  if (f.rt > 0) { f.rt--; I.l = I.r = I.jmp = 0; }
   const mv = (I.r ? 1 : 0) - (I.l ? 1 : 0);
   f.cr = f.st === 'atk' && f.an === 'd' ? 1 : 0; // agachado: caja de golpe más baja
   if (f.st === 'stun') { if (--f.t <= 0) { f.st = 'idle'; f.zz = 0; } f.vx *= f.onG ? 0.8 : 0.965; }
@@ -495,7 +503,7 @@ function fighter(f, I) {
     if (a.w && f.t === a.su && I.ah && f.chg < CHG) { if (++f.chg % 9 === 0) beep(260 + f.chg * 9, 0.04, 'square', 0.02); } else f.t++;
     if (f.onG && f.an !== 'spin') f.vx *= 0.75; else if (!f.onG) f.vx += (mv * sp - f.vx) * 0.04;
     if (f.an === 'spin' && f.t > a.su && f.t <= a.su + a.ac) f.vx = f.dir * 4.2;
-    if (a.pj && f.t === a.su) { g.pj.push({ x: a.pj === 3 ? f.x : f.x + f.dir * 14, y: a.pj === 3 ? f.y : f.y - 20, vx: f.dir * PJ[a.pj].v, vy: 0, o: f.i, ty: a.pj, l: a.pj === 3 ? 85 : 90 }); beep(a.pj === 1 ? 300 : 700, 0.1, 'square', 0.04, a.pj === 1 ? 150 : 1100); if (a.pj === 4 && --f.am <= 0) { f.hold = 0; say(f.x, f.y - 44, 'SIN BALAS', $t); } }
+    if (a.pj && f.t === a.su) { g.pj.push({ x: a.pj === 3 ? f.x : f.x + f.dir * 14, y: a.pj === 3 ? f.y : f.y - (a.pj > 4 ? 2 : 20), vx: f.dir * PJ[a.pj].v, vy: 0, o: f.i, ty: a.pj, l: a.pj === 3 ? 85 : 90 }); beep(a.pj === 1 ? 300 : 700, 0.1, 'square', 0.04, a.pj === 1 ? 150 : 1100); if (a.pj === 4 && --f.am <= 0) { f.hold = 0; say(f.x, f.y - 44, 'SIN BALAS', $t); } }
     if (f.t >= a.su + a.ac + a.re) f.st = 'idle';
   } else if (f.st === 'sh') {
     // Escudo: se gasta mientras se mantiene; con una dirección se convierte en esquiva
@@ -685,7 +693,13 @@ function tick() {
       return false;
     }
     p.x += p.vx;
-    if (!safe(o) && Math.abs(o.x - p.x) < 9 && p.y < o.y + 2 && p.y > o.y - (o.cr ? 19 : 30)) { strike(o, Math.sign(p.vx), PJ[p.ty], src, p.ty === 1 ? 34 : 0); return false; }
+    if (!safe(o) && Math.abs(o.x - p.x) < 9 && p.y < o.y + 2 && p.y > o.y - (o.cr ? 19 : 30)) {
+      if (p.ty < 5) strike(o, Math.sign(p.vx), PJ[p.ty], src, p.ty === 1 ? 34 : 0);
+      else if (o.st === 'sh') beep(900, 0.06);
+      // SUDO: al azar lo clava al piso (rt), le invierte la palanca (iv) o lo deja lento
+      else { const k = Math.random() * 3 | 0; o[['rt', 'iv', 'slow'][k]] = k ? 240 : 100; o.pct += 6 * TN.dano; say(o.x, o.y - 44, ['¡ROOTEADO!', '¡CONTROLES INVERTIDOS!', '¡LENTO!'][k], $a); beep(160, 0.3, 'sawtooth', 0.06, 50); }
+      return false;
+    }
     return --p.l > 0 && p.x > -20 && p.x < 420;
   });
   // Ítems: caen del cielo sobre una plataforma fija
@@ -788,8 +802,8 @@ function draw() {
       T(i && !two ? 'J1: ↑↓ CAMBIA AL RIVAL' : '←→ CAMBIA', x, 207, $f, 6, 'center');
     });
     T('VS', 200, 110, $a, 22, 'center');
-    T('ESCENARIO: ' + STAGES[si].n + '   (BOTÓN 2 CAMBIA)', 200, 226, $j, 9, 'center');
-    T('PELIGROS (' + STAGES[si].hz + '): ' + (hz ? 'SÍ' : 'NO') + '   (BOTÓN 3 CAMBIA)', 200, 240, hz ? $j : $f, 9, 'center');
+    T('ESCENARIO · BOTÓN 2 CAMBIA', 200, 215, $f, 6, 'center'); TS(STAGES[si].n, 200, 222, $e, 14, 'center');
+    T('PELIGROS (' + STAGES[si].hz + '): ' + (hz ? 'SÍ' : 'NO') + '   (BOTÓN 3 CAMBIA)', 200, 241, hz ? $j : $f, 9, 'center');
     if (clk % 60 < 36) T('START O BOTÓN 1: ¡A ESCENA!', 200, 262, $p, 12, 'center');
     curtains(cur); footlights(); return;
   }
@@ -883,6 +897,7 @@ function draw() {
       c.restore();
     }
     else if (p.ty === 1) { R($c, p.x - 3, p.y, 6, 2); R($c, p.x - 4, p.y - 2, 2, 3); R($c, p.x + 2, p.y - 2, 2, 3); A(0.4, () => R($c, p.x - 3 - p.vx * 2, p.y, 6, 2)); }
+    else if (p.ty > 4) { R($a, p.x - 8, p.y - 3, 16, 5); R($b, p.x - 7, p.y - 2, 14, 3); R($a, p.x + Math.sign(p.vx) * 3 - 1, p.y - 1, 2, 1); }
     else if (p.ty === 2) { R($b, p.x - 7, p.y - 4, 14, 8); R($s, p.x - 6, p.y - 3, 12, 2); R($f, p.x - 5, p.y, 4, 3); R($f, p.x + 1, p.y, 4, 3); }
     else { const hot = p.l < 40 && (p.l >> 2 & 1); R($b, p.x - 4, p.y - 10, 8, 8); R(hot ? $v : '#fff7c2', p.x - 3, p.y - 9, 6, 6); R($a, p.x - 2, p.y - 8, 2, 2); R($f, p.x - 2, p.y - 3, 4, 3); R($h, p.x - 2, p.y - 2, 4, 1); }
   });
